@@ -609,7 +609,7 @@ let currentChatSpace = 1;
 let isProcessing = false;
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // Check API connection on load
 async function checkAPIConnection() {
@@ -655,7 +655,6 @@ function highlightPII(text, entities) {
 if (!entities || entities.length === 0) return text;
 
 let highlightedText = text;
-let offset = 0;
 
 // Sort entities by start position (reverse order to maintain indices)
 const sortedEntities = [...entities].sort((a, b) => b.start - a.start);
@@ -718,11 +717,11 @@ No PII entities detected in this message.
 `;
 return;
 }
-
+    
 const itemsHTML = entities.map(entity => {
 const entityClass = getPIIClass(entity.label);
 const entityType = formatEntityType(entity.label);
-const confidence = Math.round(entity.confidence * 100);
+const confidence = Math.round((entity.confidence || 0.95) * 100);
 return `
 <div class="pii-item ${entityClass}">
 <div class="pii-info">
@@ -742,4 +741,105 @@ const chatDisplay = document.getElementById('chatDisplay');
 const highlightedPrompt = highlightPII(originalPrompt, entities);
 
 chatDisplay.innerHTML = `
-<div class
+<div class="message-container original-message">
+<div class="message-label">📝 Your Message (${entities.length} PII entities detected)</div>
+<div class="message-content">${highlightedPrompt}</div>
+</div>
+<div class="message-container llm-response">
+<div class="message-label">🤖 LLM Response (Processed in ${processingTime}ms)</div>
+<div class="message-content">${llmResponse}</div>
+</div>
+`;
+}
+
+async function sendMessage() {
+if (isProcessing) return;
+    
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const prompt = chatInput.value.trim();
+
+if (!prompt) {
+alert('Please enter a message');
+return;
+}
+
+// Set processing state
+isProcessing = true;
+sendBtn.disabled = true;
+sendBtn.innerHTML = 'Processing<div class="loading-spinner"></div>';
+
+// Show loading state
+const chatDisplay = document.getElementById('chatDisplay');
+chatDisplay.innerHTML = `
+<div class="message-container">
+<div class="message-label">⏳ Processing your message...</div>
+<div class="message-content">
+Detecting PII entities and generating response...
+<div class="loading-spinner"></div>
+</div>
+</div>
+`;
+
+try {
+console.log("Sending to backend:", prompt);
+const response = await fetch(`${API_BASE_URL}/process`, {
+method: "POST",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify({ prompt })
+});
+
+if (!response.ok) {
+throw new Error(`HTTP error! status: ${response.status}`);
+}
+
+const data = await response.json();
+console.log("Response from backend:", data);
+
+// Update UI with results
+updateChatDisplay(prompt, data.entities, data.llm_response, data.processing_time);
+updatePIIPanel(data.entities);
+updateStatus(true, 'Connected');
+
+} catch (error) {
+console.error('Error processing message:', error);
+chatDisplay.innerHTML = `
+<div class="message-container">
+<div class="message-label">❌ Error</div>
+<div class="message-content error-message">
+Failed to process message: ${error.message}
+<br><br>
+Please check if the backend server is running on http://127.0.0.1:8000
+</div>
+</div>
+`;
+updateStatus(false, 'Error');
+} finally {
+// Reset processing state
+isProcessing = false;
+sendBtn.disabled = false;
+sendBtn.textContent = 'Send';
+}
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+checkAPIConnection();
+    
+// Check connection periodically
+setInterval(checkAPIConnection, 30000); // Every 30 seconds
+    
+// Enable Enter key to send message
+const chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('keydown', function(event) {
+if (event.key === 'Enter' && !event.shiftKey) {
+event.preventDefault();
+sendMessage();
+}
+});
+});
+</script>
+</body>
+</html>
