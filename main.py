@@ -1,11 +1,15 @@
+import asyncio
+import json
+import time
+from typing import Any, Dict, List
+
+import httpx
+import spacy
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import spacy
-import httpx
-import json
-from typing import List, Dict, Any
-import asyncio
 
 # Initialize FastAPI app
 app = FastAPI(title="PrivChat PII Detection API", version="1.0.0")
@@ -29,9 +33,8 @@ except OSError:
     raise
 
 # Pydantic models
-class ChatRequest(BaseModel):
+class ProcessRequest(BaseModel):
     prompt: str
-    chat_space: int = 1
 
 class EntityInfo(BaseModel):
     text: str
@@ -40,9 +43,9 @@ class EntityInfo(BaseModel):
     end: int
     confidence: float
 
-class ChatResponse(BaseModel):
+class ProcessResponse(BaseModel):
     original_prompt: str
-    detected_entities: List[EntityInfo]
+    entities: List[EntityInfo]
     sanitized_prompt: str
     llm_response: str
     processing_time: float
@@ -73,7 +76,6 @@ async def detect_entities(text: str) -> List[EntityInfo]:
 def sanitize_prompt(text: str, entities: List[EntityInfo]) -> str:
     """Replace detected entities with placeholders"""
     sanitized = text
-    offset = 0
     
     # Sort entities by start position (reverse order to maintain indices)
     sorted_entities = sorted(entities, key=lambda x: x.start, reverse=True)
@@ -89,7 +91,7 @@ def sanitize_prompt(text: str, entities: List[EntityInfo]) -> str:
 async def call_ollama_api(prompt: str) -> str:
     """Call Ollama API for LLM response"""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             payload = {
                 "model": DEFAULT_MODEL,
                 "prompt": prompt,
@@ -108,13 +110,14 @@ async def call_ollama_api(prompt: str) -> str:
                 return f"Error calling Ollama API: {response.status_code}"
                 
     except httpx.RequestError as e:
-        return f"Error connecting to Ollama: {str(e)}"
+        return f"Error connecting to Ollama: {str(e)}. Make sure Ollama is running on localhost:11434"
     except Exception as e:
         return f"Unexpected error: {str(e)}"
 
 @app.get("/")
-async def root():
-    return {"message": "PrivChat PII Detection API is running!"}
+async def read_index():
+    """Serve the main HTML page"""
+    return FileResponse('index.html')
 
 @app.get("/health")
 async def health_check():
@@ -125,22 +128,20 @@ async def health_check():
         "ollama_url": OLLAMA_BASE_URL
     }
 
-@app.post("/chat", response_model=ChatResponse)
-async def process_chat(request: ChatRequest):
-    """Main endpoint to process chat with PII detection and LLM response"""
-    import time
+@app.post("/process")
+async def process_message(request: ProcessRequest):
+    """Main endpoint to process messages with PII detection and LLM response"""
     start_time = time.time()
     
     try:
-        print(f"\n🔄 Processing chat request...")
+        print(f"\n🔄 Processing message request...")
         print(f"📝 Input prompt: {request.prompt}")
-        print(f"💬 Chat space: {request.chat_space}")
         
         # Step 1: Detect named entities
         entities = await detect_entities(request.prompt)
         print(f"\n🔍 Detected entities:")
         for entity in entities:
-            print(f"  - {entity.text} ({entity.label}) - {entity.confidence}%")
+            print(f"  - {entity.text} ({entity.label}) - {entity.confidence*100:.1f}%")
         
         # Step 2: Sanitize prompt for LLM
         sanitized_prompt = sanitize_prompt(request.prompt, entities)
@@ -151,16 +152,16 @@ async def process_chat(request: ChatRequest):
         llm_response = await call_ollama_api(sanitized_prompt)
         print(f"📤 LLM Response: {llm_response}")
         
-        processing_time = round(time.time() - start_time, 2)
-        print(f"\n⏱️ Total processing time: {processing_time}s")
+        processing_time = round((time.time() - start_time) * 1000)  # Convert to milliseconds
+        print(f"\n⏱️ Total processing time: {processing_time}ms")
         
-        return ChatResponse(
-            original_prompt=request.prompt,
-            detected_entities=entities,
-            sanitized_prompt=sanitized_prompt,
-            llm_response=llm_response,
-            processing_time=processing_time
-        )
+        return {
+            "original_prompt": request.prompt,
+            "entities": [entity.dict() for entity in entities],
+            "sanitized_prompt": sanitized_prompt,
+            "llm_response": llm_response,
+            "processing_time": processing_time
+        }
         
     except Exception as e:
         print(f"❌ Error processing request: {str(e)}")
@@ -189,7 +190,7 @@ if __name__ == "__main__":
     
     uvicorn.run(
         "main:app", 
-        host="0.0.0.0", 
+        host="127.0.0.1", 
         port=8000, 
         reload=True,
         log_level="info"
