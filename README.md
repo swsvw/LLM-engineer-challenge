@@ -2,6 +2,14 @@
 
 PrivChat - PII Detection System
 
+<img width="1433" alt="Screenshot 2025-06-08 at 1 58 06 AM" src="https://github.com/user-attachments/assets/f2124cf9-a2de-4247-bb39-447544e11e16" />
+
+https://github.com/user-attachments/assets/f7c5fcf8-0620-4443-a29b-9fa609b88835
+
+<img width="1433" alt="Screenshot 2025-06-08 at 2 02 54 AM" src="https://github.com/user-attachments/assets/a3056ff4-3ad6-4eef-9b52-53f2d6820f1d" /><img width="1433" alt="Screenshot 2025-06-08 at 2 05 32 AM" src="https://github.com/user-attachments/assets/cb044c3e-1f21-4fbe-9c32-e640c00167d0" />
+
+
+
 A privacy-focused chat application that detects and sanitizes Personally Identifiable Information (PII) before sending messages to Large Language Models (LLMs).
 🎯 Features
 
