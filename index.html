@@ -1,152 +1,745 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PrivChat – PII Detection</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;600&display=swap">
-  <style>
-    /* [INSERT ALL THE STYLES YOU ALREADY HAVE] */
-    /* 🟢 Skip here: Assume you already pasted your CSS before */
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivChat – PII Detection System</title>
+<style>
+/* --------------------
+GLOBAL RESET
+-------------------- */
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+html, body {
+width: 100%;
+height: 100vh;
+background: #121212;
+color: #E0E0E0;
+font-family: "SF Pro Text", "Segoe UI", sans-serif;
+-webkit-font-smoothing: antialiased;
+overflow: hidden;
+}
+
+/* --------------------
+WINDOW FRAME (MAC-STYLE)
+-------------------- */
+.window {
+display: flex;
+flex-direction: column;
+width: 95vw;
+height: 90vh;
+max-width: 1200px;
+background: rgba(18, 18, 18, 0.96);
+border-radius: 12px;
+overflow: hidden;
+box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+margin: 5vh auto;
+}
+
+.titlebar {
+display: flex;
+align-items: center;
+justify-content: space-between;
+height: 50px;
+background: rgba(30, 30, 30, 0.8);
+backdrop-filter: blur(10px);
+padding: 0 20px;
+border-bottom: 1px solid #242424;
+user-select: none;
+}
+
+.hamburger {
+display: flex;
+flex-direction: column;
+gap: 3px;
+cursor: pointer;
+padding: 8px;
+}
+
+.hamburger-line {
+width: 18px;
+height: 2px;
+background: #A0A0A0;
+border-radius: 1px;
+transition: all 0.2s ease;
+}
+
+.hamburger:hover .hamburger-line {
+background: #00FF66;
+}
+
+.title {
+font-family: "SF Mono", monospace;
+font-size: 18px;
+font-weight: 600;
+color: #00FF66;
+text-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+}
+
+.status-indicator {
+display: flex;
+align-items: center;
+gap: 8px;
+font-size: 12px;
+color: #A0A0A0;
+}
+
+.status-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: #FF4444;
+animation: pulse 2s infinite;
+}
+
+.status-dot.connected {
+background: #00FF66;
+}
+
+@keyframes pulse {
+0%, 100% { opacity: 1; }
+50% { opacity: 0.5; }
+}
+
+/* --------------------
+MAIN CONTENT LAYOUT
+-------------------- */
+.content {
+flex: 1;
+display: flex;
+padding: 20px;
+gap: 20px;
+}
+
+/* --------------------
+SIDEBAR (LEFT)
+-------------------- */
+.sidebar {
+width: 180px;
+background: rgba(240, 240, 240, 0.05);
+border: 1px solid #242424;
+border-radius: 16px;
+padding: 20px 0;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+.chat-space-btn {
+background: rgba(18, 18, 18, 0.8);
+border: 2px solid #242424;
+border-radius: 12px;
+padding: 16px 20px;
+margin: 0 16px;
+cursor: pointer;
+transition: all 0.3s ease;
+color: #A0A0A0;
+font-size: 16px;
+font-weight: 500;
+text-align: center;
+position: relative;
+overflow: hidden;
+}
+
+.chat-space-btn:hover {
+border-color: #00FF66;
+color: #E0E0E0;
+transform: translateX(4px);
+}
+
+.chat-space-btn.active {
+border-color: #00FF66;
+color: #00FF66;
+background: rgba(0, 255, 102, 0.1);
+transform: translateX(4px);
+}
+
+.chat-space-btn.active::before {
+content: '';
+position: absolute;
+left: 0;
+top: 0;
+bottom: 0;
+width: 4px;
+background: #00FF66;
+border-top-right-radius: 2px;
+border-bottom-right-radius: 2px;
+}
+
+/* --------------------
+CHAT WINDOW (TOP RIGHT)
+-------------------- */
+.chat-container {
+flex: 1;
+display: flex;
+flex-direction: column;
+gap: 20px;
+}
+
+.chat-window {
+background: rgba(240, 240, 240, 0.05);
+border: 1px solid #242424;
+border-radius: 16px;
+padding: 24px;
+min-height: 280px;
+display: flex;
+flex-direction: column;
+position: relative;
+backdrop-filter: blur(10px);
+}
+
+.chat-input-section {
+display: flex;
+flex-direction: column;
+gap: 12px;
+margin-bottom: 20px;
+}
+
+.chat-prompt-label {
+font-size: 16px;
+color: #E0E0E0;
+font-weight: 500;
+}
+
+.input-container {
+display: flex;
+gap: 12px;
+align-items: flex-end;
+}
+
+.chat-input {
+flex: 1;
+background: rgba(255, 255, 255, 0.08);
+border: 1px solid #333;
+border-radius: 12px;
+padding: 12px 16px;
+color: #E0E0E0;
+font-size: 16px;
+font-family: inherit;
+resize: vertical;
+min-height: 80px;
+transition: all 0.3s ease;
+}
+
+.chat-input:focus {
+outline: none;
+border-color: #00FF66;
+background: rgba(255, 255, 255, 0.12);
+box-shadow: 0 0 0 3px rgba(0, 255, 102, 0.1);
+}
+
+.send-btn {
+background: linear-gradient(135deg, #00FF66, #00CC52);
+color: #000;
+border: none;
+border-radius: 12px;
+padding: 12px 24px;
+font-size: 14px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.3s ease;
+min-width: 80px;
+height: 48px;
+}
+
+.send-btn:hover {
+transform: translateY(-2px);
+box-shadow: 0 8px 25px rgba(0, 255, 102, 0.3);
+}
+
+.send-btn:disabled {
+background: #333;
+color: #666;
+cursor: not-allowed;
+transform: none;
+box-shadow: none;
+}
+
+.chat-display {
+flex: 1;
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+
+.message-container {
+background: rgba(255, 255, 255, 0.05);
+border: 1px solid #333;
+border-radius: 12px;
+padding: 16px;
+}
+
+.message-label {
+font-size: 12px;
+color: #A0A0A0;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-bottom: 8px;
+}
+
+.message-content {
+font-size: 16px;
+line-height: 1.5;
+}
+
+.original-message {
+border-left: 3px solid #FF6B6B;
+}
+
+.llm-response {
+border-left: 3px solid #00FF66;
+}
+
+.loading-spinner {
+display: inline-block;
+width: 16px;
+height: 16px;
+border: 2px solid #333;
+border-top: 2px solid #00FF66;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+margin-left: 8px;
+}
+
+@keyframes spin {
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
+}
+
+/* PII Highlighting */
+.pii-highlight-person {
+background: rgba(255, 165, 0, 0.3);
+color: #FFA500;
+padding: 2px 6px;
+border-radius: 4px;
+border: 1px solid rgba(255, 165, 0, 0.5);
+box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
+font-weight: 600;
+}
+
+.pii-highlight-location {
+background: rgba(0, 191, 255, 0.3);
+color: #00BFFF;
+padding: 2px 6px;
+border-radius: 4px;
+border: 1px solid rgba(0, 191, 255, 0.5);
+box-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
+font-weight: 600;
+}
+
+.pii-highlight-org {
+background: rgba(255, 102, 255, 0.3);
+color: #FF66FF;
+padding: 2px 6px;
+border-radius: 4px;
+border: 1px solid rgba(255, 102, 255, 0.5);
+box-shadow: 0 0 8px rgba(255, 102, 255, 0.3);
+font-weight: 600;
+}
+
+.pii-highlight-misc {
+background: rgba(102, 255, 102, 0.3);
+color: #66FF66;
+padding: 2px 6px;
+border-radius: 4px;
+border: 1px solid rgba(102, 255, 102, 0.5);
+box-shadow: 0 0 8px rgba(102, 255, 102, 0.3);
+font-weight: 600;
+}
+
+/* --------------------
+PII DETAILS PANEL
+-------------------- */
+.pii-details {
+flex: 1;
+background: rgba(240, 240, 240, 0.02);
+border: 1px solid #1a1a1a;
+border-radius: 16px;
+padding: 24px;
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+
+.pii-details-header {
+display: flex;
+align-items: center;
+justify-content: space-between;
+margin-bottom: 8px;
+}
+
+.pii-details-title {
+font-size: 18px;
+font-weight: 600;
+color: #00FF66;
+text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+}
+
+.pii-count {
+background: rgba(0, 255, 102, 0.2);
+color: #00FF66;
+padding: 4px 10px;
+border-radius: 12px;
+font-size: 12px;
+font-weight: 600;
+border: 1px solid rgba(0, 255, 102, 0.4);
+}
+
+.pii-items-container {
+flex: 1;
+overflow-y: auto;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+.pii-item {
+background: rgba(240, 240, 240, 0.05);
+border: 1px solid #242424;
+border-radius: 12px;
+padding: 16px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+transition: all 0.3s ease;
+}
+
+.pii-item:hover {
+transform: translateY(-2px);
+background: rgba(240, 240, 240, 0.08);
+}
+
+.pii-item.person {
+border-color: rgba(255, 165, 0, 0.3);
+background: rgba(255, 165, 0, 0.08);
+}
+
+.pii-item.location {
+border-color: rgba(0, 191, 255, 0.3);
+background: rgba(0, 191, 255, 0.08);
+}
+
+.pii-item.org {
+border-color: rgba(255, 102, 255, 0.3);
+background: rgba(255, 102, 255, 0.08);
+}
+
+.pii-item.misc {
+border-color: rgba(102, 255, 102, 0.3);
+background: rgba(102, 255, 102, 0.08);
+}
+
+.pii-info {
+display: flex;
+flex-direction: column;
+gap: 4px;
+}
+
+.pii-type {
+font-size: 12px;
+font-weight: 600;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+}
+
+.pii-type.person { color: #FFA500; }
+.pii-type.location { color: #00BFFF; }
+.pii-type.org { color: #FF66FF; }
+.pii-type.misc { color: #66FF66; }
+
+.pii-value {
+font-size: 14px;
+color: #E0E0E0;
+font-weight: 500;
+}
+
+.pii-confidence {
+padding: 4px 8px;
+border-radius: 8px;
+font-size: 11px;
+font-weight: 600;
+border: 1px solid;
+}
+
+.pii-confidence.person {
+background: rgba(255, 165, 0, 0.3);
+color: #FFA500;
+border-color: rgba(255, 165, 0, 0.5);
+}
+
+.pii-confidence.location {
+background: rgba(0, 191, 255, 0.3);
+color: #00BFFF;
+border-color: rgba(0, 191, 255, 0.5);
+}
+
+.pii-confidence.org {
+background: rgba(255, 102, 255, 0.3);
+color: #FF66FF;
+border-color: rgba(255, 102, 255, 0.5);
+}
+
+.pii-confidence.misc {
+background: rgba(102, 255, 102, 0.3);
+color: #66FF66;
+border-color: rgba(102, 255, 102, 0.5);
+}
+
+.processing-info {
+background: rgba(255, 255, 255, 0.05);
+border: 1px solid #333;
+border-radius: 8px;
+padding: 12px;
+font-size: 12px;
+color: #A0A0A0;
+text-align: center;
+}
+
+.error-message {
+background: rgba(255, 68, 68, 0.1);
+border: 1px solid rgba(255, 68, 68, 0.3);
+color: #FF4444;
+border-radius: 8px;
+padding: 12px;
+font-size: 14px;
+}
+
+/* --------------------
+RESPONSIVE DESIGN
+-------------------- */
+@media (max-width: 768px) {
+.window {
+width: 98vw;
+height: 95vh;
+margin: 2.5vh auto;
+}
+
+.content {
+flex-direction: column;
+padding: 15px;
+}
+
+.sidebar {
+width: 100%;
+flex-direction: row;
+padding: 15px;
+}
+
+.chat-space-btn {
+margin: 0 8px;
+padding: 12px 16px;
+}
+}
+</style>
 </head>
 <body>
-  <div class="window">
-    <!-- Title Bar -->
-    <div class="titlebar">
-      <div class="hamburger">
-        <div class="hamburger-line"></div>
-        <div class="hamburger-line"></div>
-        <div class="hamburger-line"></div>
-      </div>
-      <div class="title">PrivChat</div>
-      <svg class="settings-icon" viewBox="0 0 24 24">
-        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 6.5C18.5 4.9 17.5 3.5 16.1 2.4L17 1L15.6 0L14.1 1.5C12.9 1 11.4 1 10.1 1.5L8.6 0L7.2 1L8.1 2.4C6.7 3.5 5.7 4.9 5.2 6.5L3 7V9L5.2 9.5C5.7 11.1 6.7 12.5 8.1 13.6L7.2 15L8.6 16L10.1 14.5C11.3 15 12.8 15 14.1 14.5L15.6 16L17 15L16.1 13.6C17.5 12.5 18.5 11.1 19 9.5L21 9ZM12 8C14.2 8 16 9.8 16 12S14.2 16 12 16S8 14.2 8 12S9.8 8 12 8Z"/>
-      </svg>
-    </div>
+<div class="window">
+<!-- Title Bar -->
+<div class="titlebar">
+<div class="hamburger">
+<div class="hamburger-line"></div>
+<div class="hamburger-line"></div>
+<div class="hamburger-line"></div>
+</div>
+<div class="title">PrivChat - PII Detection System</div>
+<div class="status-indicator">
+<div class="status-dot" id="statusDot"></div>
+<span id="statusText">Connecting...</span>
+</div>
+</div>
 
-    <!-- Main Content -->
-    <div class="content">
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="chat-space-btn active">LLM Chat</div>
-      </div>
+<!-- Main Content -->
+<div class="content">
+<!-- Sidebar -->
+<div class="sidebar">
+<div class="chat-space-btn active" onclick="selectChatSpace(this, 1)">
+Chat Space 1
+</div>
+<div class="chat-space-btn" onclick="selectChatSpace(this, 2)">
+Chat Space 2
+</div>
+</div>
 
-      <!-- Chat Container -->
-      <div class="chat-container">
-        <!-- Chat Window -->
-        <div class="chat-window">
-          <textarea id="promptInput" placeholder="Enter a prompt..." style="width: 100%; height: 80%; background: transparent; border: 1px solid #444; color: #E0E0E0; font-size: 18px; padding: 10px; border-radius: 8px; resize: none;"></textarea>
-          <button onclick="sendPrompt()" style="position: absolute; bottom: 20px; right: 20px; background: #00FF66; color: #121212; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">Send</button>
-        </div>
+<!-- Chat Container -->
+<div class="chat-container">
+<!-- Chat Window -->
+<div class="chat-window">
+<div class="chat-input-section">
+<div class="chat-prompt-label">Enter your message:</div>
+<div class="input-container">
+<textarea 
+class="chat-input" 
+id="chatInput" 
+placeholder="Type your message here... (e.g., 'Hello, my name is John Doe and I live in New York City')"
+>Hello, my name is John Doe and I live in New York City. Please help me write an email to sarah.johnson@email.com about our meeting tomorrow at 123 Main Street.</textarea>
+<button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+</div>
+</div>
 
-        <!-- Detected Entities Panel -->
-        <div class="pii-details" id="piiDetails">
-          <div class="pii-details-header">
-            <div class="pii-details-title">Detected Entities</div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div class="pii-count" id="piiCount">0 items</div>
-              <div class="close-btn" onclick="togglePiiDetails()">×</div>
-            </div>
-          </div>
-          <div id="piiItemsList"></div>
-        </div>
+<div class="chat-display" id="chatDisplay">
+<div class="message-container">
+<div class="message-label">💡 Ready to process your message</div>
+<div class="message-content">
+Click "Send" to detect PII entities and get an LLM response. Your data will be processed locally with privacy protection.
+</div>
+</div>
+</div>
+</div>
 
-        <!-- LLM Response Panel -->
-        <div class="pii-details" id="llmResponseContainer" style="display: none;">
-          <div class="pii-details-header">
-            <div class="pii-details-title" style="color: #61dafb;">LLM Response</div>
-          </div>
-          <div id="llmResponseContent" style="color: #E0E0E0; font-size: 16px; line-height: 1.6;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- PII Details Panel -->
+<div class="pii-details">
+<div class="pii-details-header">
+<div class="pii-details-title">PII Detection Results</div>
+<div class="pii-count" id="piiCount">0 items</div>
+</div>
+<div class="pii-items-container" id="piiItemsContainer">
+<div class="processing-info">
+No PII entities detected yet. Send a message to see results.
+</div>
+</div>
+</div>
+</div>
+</div>
 
-  <!-- Script -->
-  <script>
-    let isPiiDetailsVisible = false;
+<script>
+let currentChatSpace = 1;
+let isProcessing = false;
 
-    function togglePiiDetails() {
-      const piiDetails = document.getElementById('piiDetails');
-      isPiiDetailsVisible = !isPiiDetailsVisible;
-      piiDetails.classList.toggle('active', isPiiDetailsVisible);
-    }
+// API Configuration
+const API_BASE_URL = 'http://localhost:8000';
 
-    async function sendPrompt() {
-      const prompt = document.getElementById('promptInput').value.trim();
-      if (!prompt) return;
+// Check API connection on load
+async function checkAPIConnection() {
+try {
+const response = await fetch(`${API_BASE_URL}/health`);
+if (response.ok) {
+updateStatus(true, 'Connected');
+} else {
+updateStatus(false, 'API Error');
+}
+} catch (error) {
+updateStatus(false, 'Disconnected');
+console.error('API connection failed:', error);
+}
+}
 
-      try {
-        const response = await fetch('http://localhost:8000/process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
-        });
+function updateStatus(connected, text) {
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+statusDot.classList.toggle('connected', connected);
+statusText.textContent = text;
+}
 
-        const data = await response.json();
-        updateUI(prompt, data);
-      } catch (error) {
-        alert("Error: Could not reach backend");
-        console.error(error);
-      }
-    }
+function selectChatSpace(element, spaceNumber) {
+// Remove active class from all buttons
+const allButtons = document.querySelectorAll('.chat-space-btn');
+allButtons.forEach(btn => btn.classList.remove('active'));
 
-    function updateUI(prompt, data) {
-      const { entities, llm_response } = data;
+// Add active class to clicked button
+element.classList.add('active');
+currentChatSpace = spaceNumber;
 
-      updatePiiDetails(entities);
-      updateHighlightedPrompt(prompt, entities);
-      displayLlmResponse(llm_response);
-    }
+// Update placeholder text based on chat space
+const chatInput = document.getElementById('chatInput');
+if (spaceNumber === 1) {
+chatInput.placeholder = "Type your message here... (e.g., 'Hello, my name is John Doe and I live in New York City')";
+} else {
+chatInput.placeholder = "Type your message here... (e.g., 'Contact sarah.johnson@email.com at (555) 123-4567')";
+}
+}
 
-    function updatePiiDetails(entities) {
-      const piiItemsList = document.getElementById('piiItemsList');
-      const piiCount = document.getElementById('piiCount');
-      piiItemsList.innerHTML = '';
+function highlightPII(text, entities) {
+if (!entities || entities.length === 0) return text;
 
-      entities.forEach(entity => {
-        const colorClass = entity.label === 'PERSON' ? 'orange' : 'blue';
-        const item = `
-          <div class="pii-item ${colorClass}">
-            <div class="pii-info">
-              <div class="pii-type ${colorClass}">${entity.label}</div>
-              <div class="pii-value">${entity.text}</div>
-            </div>
-          </div>
-        `;
-        piiItemsList.innerHTML += item;
-      });
+let highlightedText = text;
+let offset = 0;
 
-      piiCount.textContent = `${entities.length} items`;
-      document.getElementById('piiDetails').style.display = 'flex';
-    }
+// Sort entities by start position (reverse order to maintain indices)
+const sortedEntities = [...entities].sort((a, b) => b.start - a.start);
 
-    function updateHighlightedPrompt(prompt, entities) {
-      let highlighted = prompt;
-      entities.forEach(ent => {
-        const colorClass = ent.label === 'PERSON' ? 'pii-highlight-orange' : 'pii-highlight-blue';
-        const escapedText = ent.text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const regex = new RegExp(`\\b${escapedText}\\b`, 'g');
-        highlighted = highlighted.replace(regex, `<span class="${colorClass}">${ent.text}</span>`);
-      });
+for (const entity of sortedEntities) {
+const entityClass = getPIIClass(entity.label);
+const highlighted = `<span class="pii-highlight-${entityClass}">${entity.text}</span>`;
+const start = entity.start;
+const end = entity.end;
+highlightedText = highlightedText.substring(0, start) + highlighted + highlightedText.substring(end);
+}
 
-      const chatWindow = document.querySelector('.chat-window');
-      chatWindow.innerHTML = `
-        <div class="chat-example">${highlighted}</div>
-        <div class="pii-status" style="display: ${entities.length > 0 ? 'flex' : 'none'};">
-          PII Detected
-          <div class="pii-info-btn" onclick="togglePiiDetails()">i</div>
-        </div>
-        <div class="user-icon">👤</div>
-      `;
-    }
+return highlightedText;
+}
 
-    function displayLlmResponse(response) {
-      const container = document.getElementById('llmResponseContainer');
-      const content = document.getElementById('llmResponseContent');
-      content.innerHTML = response.replace(/\n/g, '<br>');
-      container.style.display = 'flex';
-    }
-  </script>
-</body>
-</html>
+function getPIIClass(label) {
+// Map spaCy NER labels to our CSS classes
+const labelMap = {
+'PERSON': 'person',
+'GPE': 'location',     // Geopolitical entity
+'LOC': 'location',     // Location
+'ORG': 'org',          // Organization
+'MONEY': 'misc',
+'DATE': 'misc',
+'TIME': 'misc',
+'PERCENT': 'misc',
+'FACILITY': 'location',
+'EVENT': 'misc'
+};
+return labelMap[label] || 'misc';
+}
+
+function formatEntityType(label) {
+const typeMap = {
+'PERSON': 'Person',
+'GPE': 'Location',
+'LOC': 'Location',
+'ORG': 'Organization',
+'MONEY': 'Money',
+'DATE': 'Date',
+'TIME': 'Time',
+'PERCENT': 'Percentage',
+'FACILITY': 'Facility',
+'EVENT': 'Event'
+};
+return typeMap[label] || label;
+}
+
+function updatePIIPanel(entities) {
+const piiCount = document.getElementById('piiCount');
+const piiItemsContainer = document.getElementById('piiItemsContainer');
+
+piiCount.textContent = `${entities.length} item${entities.length !== 1 ? 's' : ''}`;
+
+if (entities.length === 0) {
+piiItemsContainer.innerHTML = `
+<div class="processing-info">
+No PII entities detected in this message.
+</div>
+`;
+return;
+}
+
+const itemsHTML = entities.map(entity => {
+const entityClass = getPIIClass(entity.label);
+const entityType = formatEntityType(entity.label);
+const confidence = Math.round(entity.confidence * 100);
+return `
+<div class="pii-item ${entityClass}">
+<div class="pii-info">
+<div class="pii-type ${entityClass}">${entityType}</div>
+<div class="pii-value">${entity.text}</div>
+</div>
+<div class="pii-confidence ${entityClass}">${confidence}%</div>
+</div>
+`;
+}).join('');
+
+piiItemsContainer.innerHTML = itemsHTML;
+}
+
+function updateChatDisplay(originalPrompt, entities, llmResponse, processingTime) {
+const chatDisplay = document.getElementById('chatDisplay');
+const highlightedPrompt = highlightPII(originalPrompt, entities);
+
+chatDisplay.innerHTML = `
+<div class
